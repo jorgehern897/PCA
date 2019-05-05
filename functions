@@ -1,0 +1,54 @@
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+import pandas as pd
+from arch import arch_model
+import matplotlib.pyplot as plt
+
+
+#calculate the covariance of daily log_return
+def corr_std(log_return):  
+    #Fit to data, then transform it to scale it with mean 0 and std dev of 1
+    X_std = StandardScaler().fit_transform(log_return)
+    #to be consistant with the paper http://www.carolalexander.org/publish/download/JournalArticles/PDFs/OrthogonalGARCH_Primer.PDF
+    X_std=X_std/np.sqrt(len(log_return))
+    # The correlation matrix of the standarized data of log returns. It will return a n x n matrix
+    corr_mat = np.corrcoef(X_std.T)
+    return [X_std,corr_mat]
+
+#Obtain the eigen value and eigen vectors
+def eigen_return(log_return):
+    [X_std,corr_mat]=corr_std(log_return)
+    #The eigen decomposition of the standarized data based on the correlation matrix
+    eig_vals, eig_vecs = np.linalg.eig(corr_mat)
+    # Creating a list of eigenvalue and eigenvector tuples
+    eig_pairs = [(np.abs(eig_vals[i]), eig_vecs[:,i]) for i in range(len(eig_vals))]
+    # Sorting the eigenvalue and  eigenvector tuples from high to low
+    eig_pairs.sort()
+    eig_pairs.reverse()
+    return [X_std,eig_pairs]
+
+#Will return the cumulative sum of the PCA components to choose the total variation of dimensions in an array
+def total_variation()
+tot = sum(eig_vals)
+#The total variation for each principal component which explains how much information can be attributed from each principal component
+var_exp = [(i / tot)*100 for i in sorted(eig_vals, reverse=True)]
+cum_var_exp = np.cumsum(var_exp)
+return cum_var_exp
+
+#Obtain Principle return after the transformation
+def PCA(log_return):
+    [X_std,eig_pairs]=eigen_return(log_return)
+    # m is to append data to d
+    m = []
+    # d is going to be the new dimension of the eigen matrix
+    d = []
+    # Choose the amount of total variation tv in which one wants. In this case it is set with at least 95% of data to be explained in all the principal components of the new matrix
+    tv = 95
+    # Looping throught the total variation where one choose how much total variation will be needed
+    for i in range(len(total_variation())):
+        if total_variation()[i] > tv:
+            m = i+1
+            d.append(m)         
+    eig_mat=np.vstack([eig_pairs[i][1]]for i in range(d[0])).T
+    Pc=X_std.dot(eig_mat)
+    return [Pc,eig_mat]
